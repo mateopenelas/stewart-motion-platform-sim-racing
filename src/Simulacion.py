@@ -86,8 +86,8 @@ fL_long = 0
 
 g_max = 5
 
-archivo = open('log.txt', 'w')
-archivo.write('fL_lat,fL_long,accG[0],accG[2],dt\n')
+# archivo = open('log.txt', 'w')
+# archivo.write('fL_lat,fL_long,accG[0],accG[2],dt\n')
 
 def low_pass_filter(y, x_viejo, a_0, dt):
     x_nuevo = x_viejo + dt * a_0 * (y - x_viejo)
@@ -110,7 +110,7 @@ def actualizar(frame):
         fL_long = low_pass_filter(np.clip(fis.accG[2], -g_max, g_max), fL_long, a_0, dt)
 
         print(fL_lat, fL_long)
-        archivo.write(f'{fL_lat},{fL_long},{fis.accG[0]},{fis.accG[2]},{dt}\n')
+        # archivo.write(f'{fL_lat},{fL_long},{fis.accG[0]},{fis.accG[2]},{dt}\n')
         roll = -fL_lat/g
         pitch = fL_long/g
         yaw = 0
@@ -127,3 +127,4 @@ try:
     plt.show()
 finally:
     mm.close()
+    # archivo.close()

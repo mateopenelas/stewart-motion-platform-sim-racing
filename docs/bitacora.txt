@@ -1,1 +1,50 @@
-24/8/2026
+---Sesiones previas---
+Stewart Gough platform como geometria elegida. revisar si simetrica o no. Simuladores caros no son simetricos.
+Actuador: ball screw + motor servo 90ST M02430 (a revisar). 
+Planos de Departed Reality. Tambien a revisar ya que usa ball joint de la misma pagina. Es practico que usan impresiones 3D y tienen diversas opciones de largos y 80 o 90ST.
+Largo del actuador a revisar.
+Actuador lineal sobre servo/wiper motor + crank arm. Cinematica mas simple.
+Mas fuerza y precision pero mas caro.
+Mecanismo de 6 actuadores lineales (hexápodo) inventado independientemente por V.E. Gough (1947, máquina de test de neumáticos, operativa 1954). 
+D. Stewart (1965) propuso un mecanismo distinto (3 patas, 2 actuadores c/u) para simulación de vuelo.
+Gough reveló su trabajo previo en la correspondencia adjunta al mismo paper (descubrimientos paralelos). 
+Nomenclatura correcta en la literatura: 'Gough-Stewart platform'
+Limite fisico de tilt coordination 1G por fisicas terrestres. Ademas, practicamente imposible alcanzar esa fuerza ya que hay que inclinar 90grados la plataforma.
+Angulos maximos de tilt alrededor de 20 grados. A revisar.
+Doblar a la izquierda inclina la plataforma a la derecha y viceversa.
+Frenar inclina hacia adelante y viceversa.
+Unidades de pitch/roll/heading extraidas de la telemetria son en radianes. 
+Por ahora no las usamos ya que es la inclinacion real del auto en el juego. No simula las fuerzas.
+Telemetria extraida con script en Python con ctypes y mmap en la locacion "Local\\acpmf_physics".
+Revisar si dejar en Python o pasar todo a C++. Para eficiencia y usar el lenguaje que devuelve la telemetria.
+Deep research de 3 LLMs (ChatGPT/Claude/Gemini) comparados para bibliografía. 
+Encontrada al menos una cita alucinada en Gemini (paper 'SPRK' con autores/año/revista incorrectos). 
+Lección: verificar toda cita generada por IA contra fuente primaria antes de usarla en el paper.
+---24/8/2026---
+Agregue low pass filter. 
+Formula 5.63 en reid nahon 1985.
+N=1 por ahora por simplicidad, autores usan N=3. A revisar.
+x_nuevo = x_viejo + dt * a_0 * (y - x_viejo) es la formula con N=1. Al subir N, el algebra se complejiza ya que hay que elegir a0, a1, ... , an
+a_0 = 3. A revisar.
+Al usar dt=1/fps la plataforma casi no se movia.
+Encontramos bug: la funcion actualizar tarda mas que los FPS definidos ya que tarda en graficar en matplotlib.
+Entonces: dt no definido por 1/fps sino por el tiempo real que tarda entre cada funcion actualizar.
+dt limitado en 0.1 para no romper la integral del LP.
+Roll/Pitch definidos en base a la formula 5.34 de reid nahon 1985
+Gravedad clipeada por +-g_max. Actualmente g_max = 5. A revisar.
+Ver de hacer una g_max dinamica que cambie segun el registro de gravedad de la sesion actual o de las sesiones historicas. Dejar para mas adelante.
+High pass va a ser (señal total - señal con LP) por ahora ya que a0 es igual para ambos. A revisar tambien. 
+Se pueden usar a0 diferentes.
+Movimiento de la plataforma simulado con matplotlib.
+Radio base y radio plataforma puestos de manera provisoria, luego de armar el software hay que analizar fisicas y ver que conviene.
+Lo mismo con la diferencia de grados entre anclajes.
+La plataforma se rota con Rotation de scipy.
+Rotacion definida por roll y pitch. Yaw = 0.
+Traslacion sin hacer todavia. Orientacion final de la plataforma es β_S = β_SL + β_SH, tilt-coordination + velocidad angular.
+Hasta ahora solo esta hecho β_SL, falta β_SH
+roll -> -accG[0]; pitch -> accG[2]
+El script tiraba error porque las variables tenian un scope solamente adentro de la funcion y necesitabamos algunas que perduren como un bucle.
+Entonces se usa global en funcion actualizar para que el scope de las variables no este acotado a solo la funcion. 
+Velocidad de tilt coordination debe estar por abajo del umbral de percepcion del oido humano para simular aceleraciones continuas.
+Otolitos no distinguen aceleración lineal real de inclinación de gravedad.
+Falta agregar clip de seguridad final sobre roll/pitch (angulo_max) como red de seguridad extra, ademas del clip sobre accG crudo. Pendiente.
