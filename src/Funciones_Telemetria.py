@@ -65,7 +65,7 @@ class fisicas(ctypes.Structure):
         
         # ── Velocidad angular local ──────────────────────────────────────────
         # Importantísimo para la plataforma: roll rate, pitch rate, yaw rate
-        ('localAngularVelocity',  f * 3),
+        ('localAngularVelocity',  f * 3), # [0] pitch [1] yaw [2] roll
         
         ('finalFF',               f),     # señal final de force feedback
         ('performanceMeter',      f),

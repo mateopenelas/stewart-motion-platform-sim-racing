@@ -84,17 +84,48 @@ t1 = time.perf_counter()
 fL_lat = 0
 fL_long = 0
 
-g_max = 5
+lav_roll = 0
+lav_pitch = 0
+lav_yaw = 0
 
-# archivo = open('log.txt', 'w')
-# archivo.write('fL_lat,fL_long,accG[0],accG[2],dt\n')
+lav_roll_l1 = 0
+lav_pitch_l1 = 0
+lav_yaw_l1 = 0
+
+lav_roll_l2 = 0
+lav_pitch_l2 = 0
+lav_yaw_l2 = 0
+
+g_max = 5
+lav_max = 2.5
+
+roll = 0
+pitch = 0
+
+archivo = open('log.txt', 'w')
+archivo.write('steerAngle,gas,brake,speedKmh,localAngularVelocity[0],localAngularVelocity[1],localAngularVelocity[2]\n')
+
+def integrar(valor_viejo, tasa, dt):
+    valor_nuevo = valor_viejo + dt * tasa
+    return valor_nuevo
 
 def low_pass_filter(y, x_viejo, a_0, dt):
-    x_nuevo = x_viejo + dt * a_0 * (y - x_viejo)
+    x_nuevo = integrar(x_viejo, a_0 * (y - x_viejo), dt) 
     return x_nuevo
 
+def high_pass_filter(y, x_lp_viejo, a_0, dt):
+    lp_nuevo = low_pass_filter(y, x_lp_viejo, a_0, dt)
+    x_nuevo = y - lp_nuevo
+    return x_nuevo, lp_nuevo
+
+def tsx(pH, qH, rH, roll, pitch):
+    phi_H = pH + qH*np.sin(roll)*np.tan(pitch) + rH*np.cos(roll)*np.tan(pitch)
+    theta_H = qH*np.cos(roll) - rH*np.sin(roll)
+    psi_H = qH*np.sin(roll)*(1/np.cos(pitch)) + rH*np.cos(roll)*(1/np.cos(pitch))
+    return phi_H, theta_H, psi_H
+
 def actualizar(frame):
-    global ultimo_packet_id, fL_lat, fL_long, dt, t1
+    global ultimo_packet_id, fL_lat, fL_long, dt, t1, lav_roll, lav_pitch, lav_yaw, roll, pitch, lav_roll_l1, lav_pitch_l1, lav_yaw_l1, lav_roll_l2, lav_pitch_l2, lav_yaw_l2
     fis = t.leer_fisicas(mm)
     if ultimo_packet_id != fis.packetId:
         t_now = time.perf_counter()
@@ -109,11 +140,24 @@ def actualizar(frame):
         fL_lat = low_pass_filter(np.clip(fis.accG[0], -g_max, g_max), fL_lat, a_0, dt)
         fL_long = low_pass_filter(np.clip(fis.accG[2], -g_max, g_max), fL_long, a_0, dt)
 
-        print(fL_lat, fL_long)
-        # archivo.write(f'{fL_lat},{fL_long},{fis.accG[0]},{fis.accG[2]},{dt}\n')
-        roll = -fL_lat/g
-        pitch = fL_long/g
-        yaw = 0
+        lav_roll_h1, lav_roll_l1 = high_pass_filter(np.clip(fis.localAngularVelocity[2], -lav_max, lav_max), lav_roll_l1, a_0, dt)
+        lav_pitch_h1, lav_pitch_l1 = high_pass_filter(np.clip(fis.localAngularVelocity[0], -lav_max, lav_max), lav_pitch_l1, a_0, dt)
+        lav_yaw_h1, lav_yaw_l1 = high_pass_filter(np.clip(fis.localAngularVelocity[1], -lav_max, lav_max), lav_yaw_l1, a_0, dt)
+
+        roll_tsx, pitch_tsx, yaw_tsx = tsx(lav_roll_h1, lav_pitch_h1, lav_yaw_h1, roll, pitch)
+
+        lav_roll_h2, lav_roll_l2 = high_pass_filter(roll_tsx, lav_roll_l2, a_0, dt)
+        lav_pitch_h2, lav_pitch_l2 = high_pass_filter(pitch_tsx, lav_pitch_l2, a_0, dt)
+        lav_yaw_h2, lav_yaw_l2 = high_pass_filter(yaw_tsx, lav_yaw_l2, a_0, dt)
+
+        lav_roll = integrar(lav_roll, lav_roll_h2, dt)
+        lav_pitch = integrar(lav_pitch, lav_pitch_h2, dt)
+        lav_yaw = integrar(lav_yaw, lav_yaw_h2, dt)
+
+        archivo.write(f'{fis.steerAngle},{fis.gas},{fis.brake},{fis.speedKmh},{fis.localAngularVelocity[0]},{fis.localAngularVelocity[1]},{fis.localAngularVelocity[2]}\n')
+        roll = -fL_lat/g + lav_roll
+        pitch = fL_long/g + lav_pitch
+        yaw = lav_yaw
         plataforma_rotada = rotar_plataforma(anclajes_p, roll, pitch, yaw)
         plataforma_final = trasladar_plataforma(plataforma_rotada, traslacion)
         dibujar_base(anclajes_b)
@@ -127,4 +171,4 @@ try:
     plt.show()
 finally:
     mm.close()
-    # archivo.close()
+    archivo.close()

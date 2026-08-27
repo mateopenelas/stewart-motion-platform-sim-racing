@@ -24,6 +24,7 @@ Lección: verificar toda cita generada por IA contra fuente primaria antes de us
 Agregue low pass filter. 
 Formula 5.63 en reid nahon 1985.
 N=1 por ahora por simplicidad, autores usan N=3. A revisar.
+Por ahora se usa metodo de Euler para integrar en el tiempo por simplicidad. A revisar.
 x_nuevo = x_viejo + dt * a_0 * (y - x_viejo) es la formula con N=1. Al subir N, el algebra se complejiza ya que hay que elegir a0, a1, ... , an
 a_0 = 3. A revisar.
 Al usar dt=1/fps la plataforma casi no se movia.
@@ -33,6 +34,7 @@ dt limitado en 0.1 para no romper la integral del LP.
 Roll/Pitch definidos en base a la formula 5.34 de reid nahon 1985
 Gravedad clipeada por +-g_max. Actualmente g_max = 5. A revisar.
 Ver de hacer una g_max dinamica que cambie segun el registro de gravedad de la sesion actual o de las sesiones historicas. Dejar para mas adelante.
+Falta formula de clipeo de reid y nahon, por ahora solo es np.clip.
 High pass va a ser (señal total - señal con LP) por ahora ya que a0 es igual para ambos. A revisar tambien. 
 Se pueden usar a0 diferentes.
 Movimiento de la plataforma simulado con matplotlib.
@@ -48,3 +50,4 @@ Entonces se usa global en funcion actualizar para que el scope de las variables 
 Velocidad de tilt coordination debe estar por abajo del umbral de percepcion del oido humano para simular aceleraciones continuas.
 Otolitos no distinguen aceleración lineal real de inclinación de gravedad.
 Falta agregar clip de seguridad final sobre roll/pitch (angulo_max) como red de seguridad extra, ademas del clip sobre accG crudo. Pendiente.
+Clip a angulo de plataforma pendiente. Voy a esperar a tener los actuadores ya que en matplotlib no hay problema.
