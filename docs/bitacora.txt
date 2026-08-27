@@ -20,6 +20,7 @@ Revisar si dejar en Python o pasar todo a C++. Para eficiencia y usar el lenguaj
 Deep research de 3 LLMs (ChatGPT/Claude/Gemini) comparados para bibliografía. 
 Encontrada al menos una cita alucinada en Gemini (paper 'SPRK' con autores/año/revista incorrectos). 
 Lección: verificar toda cita generada por IA contra fuente primaria antes de usarla en el paper.
+
 ---24/8/2026---
 Agregue low pass filter. 
 Formula 5.63 en reid nahon 1985.
@@ -51,3 +52,19 @@ Velocidad de tilt coordination debe estar por abajo del umbral de percepcion del
 Otolitos no distinguen aceleración lineal real de inclinación de gravedad.
 Falta agregar clip de seguridad final sobre roll/pitch (angulo_max) como red de seguridad extra, ademas del clip sobre accG crudo. Pendiente.
 Clip a angulo de plataforma pendiente. Voy a esperar a tener los actuadores ya que en matplotlib no hay problema.
+
+---26/8/2026---
+Implemente β_SH (velocidad angular) por lo que el canal rotacional esta terminado.
+Orden: lav pura -> HP1 -> transforma a tasa de angulos de euler -> HP2 -> integrar con metodo de euler -> radianes
+Falta tuning (a0, N, g_max, lav_max)
+Filtro High Pass es (senial total - Low Pass), no es HP real. Desventaja: ambos filtros usan a_0 iguales.
+TSX usa formula 5.22 de reid nahon 1985.
+Hay error en fomula 5.22. 
+Formula con error: phi_H = pH + qH*sin(phi_S)*tan(theta_S) + rH*cos(phi_S)  |  Formula corregida: phi_H = pH + qH*sin(phi_S)*tan(theta_S) + rH*cos(phi_S)*tan(theta_S)
+No lo descubri yo el error sino que estaba anotado en lapiz en el paper escaneado.
+localAngularVelocity[x] no aclarado que es cada indice. Asumi que 0 = roll, 1 = pitch, 2 = yaw (mismos indices que accG).
+La asuncion fue equivocada. Hubo que testear cada lav lo mas aislado posible. 
+Use mapa de AC 'Suspension Test Track' para determinar el pitch.
+Para determinar yaw use un log correlacionando las lav con steerAngle.
+Roll se determino por descarte.
+Conclusion: 0 = pitch 1 = yaw 2 = roll.
