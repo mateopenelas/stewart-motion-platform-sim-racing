@@ -69,3 +69,6 @@ def tsx(pH, qH, rH, roll, pitch):
     theta_H = qH*np.cos(roll) - rH*np.sin(roll)
     psi_H = qH*np.sin(roll)*(1/np.cos(pitch)) + rH*np.cos(roll)*(1/np.cos(pitch))
     return phi_H, theta_H, psi_H
+
+def gravedad_simulador(roll: float, pitch: float) -> np.ndarray:
+    return np.array([-np.sin(pitch), np.cos(pitch)*np.sin(roll), np.cos(pitch)*np.cos(roll)])
