@@ -49,13 +49,9 @@ if __name__ == '__main__':
     a_p  = np.zeros(3)
     a_v2 = np.zeros(3)
 
-    g_max = 5
-    lav_max = 2.5
-
     roll = 0
     pitch = 0
 
-    aL = np.zeros(3)
     a_int1 = np.zeros(3)
     a_int2 = np.zeros(3)
 
@@ -90,8 +86,8 @@ if __name__ == '__main__':
             fL_long, fL_long_d = lp_orden2(f_AA[2], fL_long, fL_long_d, 3.1, 1.4, dt, 0.102)
 
             lav_roll_h1, lav_roll_v, lav_roll_p = hp_orden2(np.clip(fis.localAngularVelocity[2], -lav_max, lav_max), lav_roll_v, lav_roll_p, 1.02, 1.0, dt)
-            lav_pitch_h1, lav_pitch_v, lav_pitch_p = hp_orden2(np.clip(fis.localAngularVelocity[2], -lav_max, lav_max), lav_pitch_v, lav_pitch_p, 1.02, 1.0, dt)
-            lav_yaw_h1, lav_yaw_v, lav_yaw_p = hp_orden2(np.clip(fis.localAngularVelocity[2], -lav_max, lav_max), lav_yaw_v, lav_yaw_p, 1.02, 1.0, dt)
+            lav_pitch_h1, lav_pitch_v, lav_pitch_p = hp_orden2(np.clip(fis.localAngularVelocity[0], -lav_max, lav_max), lav_pitch_v, lav_pitch_p, 1.02, 1.0, dt)
+            lav_yaw_h1, lav_yaw_v, lav_yaw_p = hp_orden2(np.clip(fis.localAngularVelocity[1], -lav_max, lav_max), lav_yaw_v, lav_yaw_p, 1.02, 1.0, dt)
 
             roll_ts, pitch_ts, yaw_ts = ts(lav_roll_h1, lav_pitch_h1, lav_yaw_h1, roll, pitch)
 
