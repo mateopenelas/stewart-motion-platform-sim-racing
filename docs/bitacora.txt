@@ -68,3 +68,20 @@ Use mapa de AC 'Suspension Test Track' para determinar el pitch.
 Para determinar yaw use un log correlacionando las lav con steerAngle.
 Roll se determino por descarte.
 Conclusion: 0 = pitch 1 = yaw 2 = roll.
+
+---28/8/2026---
+Agregue canal traslacional explicado por reid y nahon 1985 explicado en seccion 5.1 y grafico 5.1.
+Se clipea con np.clip la fuerza g extraida de la telemetria por +-g_max.
+Se le suma el vector de gravedad correspondiente a la inclinacion de la plataforma.
+Se filtra con HP, se rota y se vuelve a filtrar. 
+Se pasa de fuerza G a mm/s^2 para poder integrar dos veces y que devuelva el movimiento en mm.
+Bug: al testear canal de traslacion aislado funciona mal.
+
+---10/7/2026---
+Cambie a1 = f1 + gravedad, por a1 = f1 - gravedad. El paper usa eje z negativo, por eso sumaba en vez de restar.
+Cambie nombre variable accG a f_AA. Era confuso, ahra es mas especifico y claro.
+Verificado, AC es diestro.
+Correccion ejes. Agregue fucion AC a Plataforma porque no tienen mismos indices de ejes.
+Correccion clip asimetrico. Igualmente, el clip de esta manera es temporal.
+Arregle filtro HP de orden 1 para mejor consistencia entre filtros.
+Agregue HP y LP de orden 2, para arreglar la vuelta a posicion 0 del canal traslacional.

@@ -55,20 +55,45 @@ def integrar(valor_viejo, tasa, dt):
     valor_nuevo = valor_viejo + dt * tasa
     return valor_nuevo
 
-def low_pass_filter(y, x_viejo, a_0, dt):
-    x_nuevo = integrar(x_viejo, a_0 * (y - x_viejo), dt) 
-    return x_nuevo
+def hp_orden1(y, v, w, dt):
+    """Pasaaltos de 1er orden: s/(s+w).
+    v = la salida integrada una vez (el estado)."""
+    hp = y - w*v
+    v = integrar(v, hp, dt)
+    return hp, v
 
-def high_pass_filter(y, x_lp_viejo, a_0, dt):
-    lp_nuevo = low_pass_filter(y, x_lp_viejo, a_0, dt)
-    x_nuevo = y - lp_nuevo
-    return x_nuevo, lp_nuevo
+def lp_orden2(y, x, xd, wn, zeta, dt, rate_limit=None):
+    """Pasabajos de 2do orden: wn^2/(s^2 + 2*zeta*wn*s + wn^2)."""
+    xdd = wn**2 * (y - x) - 2.0*zeta*wn*xd
+    xd = integrar(xd, xdd, dt)
+    if rate_limit is not None:
+        xd = np.clip(xd, -rate_limit, rate_limit)   # R&N Sec. 5.5.2
+    x = integrar(x, xd, dt)
+    return x, xd
 
-def tsx(pH, qH, rH, roll, pitch):
+def hp_orden2(y, v, p, wn, zeta, dt):
+    """Pasaaltos de 2do orden: s^2/(s^2 + 2*zeta*wn*s + wn^2).
+    v = salida integrada 1 vez, p = integrada 2 veces (R&N Ec. 5.50-5.53).
+    Son estados: hay que guardarlos entre llamadas."""
+    x = y - 2.0*zeta*wn*v - wn**2 * p
+    v = integrar(v, x, dt)
+    p = integrar(p, v, dt)
+    return x, v, p
+
+def ts(pH, qH, rH, roll, pitch):
     phi_H = pH + qH*np.sin(roll)*np.tan(pitch) + rH*np.cos(roll)*np.tan(pitch)
     theta_H = qH*np.cos(roll) - rH*np.sin(roll)
     psi_H = qH*np.sin(roll)*(1/np.cos(pitch)) + rH*np.cos(roll)*(1/np.cos(pitch))
     return phi_H, theta_H, psi_H
 
-def gravedad_simulador(roll: float, pitch: float) -> np.ndarray:
-    return np.array([-np.sin(pitch), np.cos(pitch)*np.sin(roll), np.cos(pitch)*np.cos(roll)])
+def gravedad(roll: float, pitch: float) -> np.ndarray:
+    longitudinal = -np.sin(pitch)
+    lateral = np.cos(pitch)*np.sin(roll)
+    vertical = np.cos(pitch)*np.cos(roll)
+    return np.array([lateral, vertical, longitudinal])
+
+def ac_a_plataforma(v):
+    """AC [lat, vert, long] -> plataforma [long, lat, vert].
+    Signos VERIFICADOS: AC es diestro (x=izquierda, y=arriba, z=adelante),
+    asi que es un reordenamiento puro, sin cambios de signo."""
+    return np.array([v[2], v[0], v[1]])
