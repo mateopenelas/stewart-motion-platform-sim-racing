@@ -76,8 +76,10 @@ Se le suma el vector de gravedad correspondiente a la inclinacion de la platafor
 Se filtra con HP, se rota y se vuelve a filtrar. 
 Se pasa de fuerza G a mm/s^2 para poder integrar dos veces y que devuelva el movimiento en mm.
 Bug: al testear canal de traslacion aislado funciona mal.
+Estado al 9/10: diagnosticadas tres causa (el filtro era de orden 2 y hacen falta 3, Ec. 2.26, y otras causas, ver 9/10). Corregido el 7/10.
+El canal sigue moviendose raro. Falta diagnosticar. No encarar hasta terminar de leer el documento.
 
----10/7/2026---
+---7/10/2026---
 Cambie a1 = f1 + gravedad, por a1 = f1 - gravedad. El paper usa eje z negativo, por eso sumaba en vez de restar.
 Cambie nombre variable accG a f_AA. Era confuso, ahra es mas especifico y claro.
 Verificado, AC es diestro.
@@ -85,3 +87,94 @@ Correccion ejes. Agregue fucion AC a Plataforma porque no tienen mismos indices 
 Correccion clip asimetrico. Igualmente, el clip de esta manera es temporal.
 Arregle filtro HP de orden 1 para mejor consistencia entre filtros.
 Agregue HP y LP de orden 2, para arreglar la vuelta a posicion 0 del canal traslacional.
+Corregi unidades del tilt coordination. 
+Ahora se usa la ec. 5.30 (exacta, con arctan2) en vez de la 5.34 (linealizada).
+Motivo: la 5.34 asume f_L_z = -g. Un auto tiene carga aerodinamica,
+compresiones y pianos, asi que la vertical se va entre 0.5 y 2 G. La 5.30 la mide.
+Hubo que agregar fL_vert: es el denominador real que la 5.34 daba por sentado.
+fL_vert tiene red de seguridad en 0.2, para para evitar el salto de ~180 grados si fL_vert se vuelve negativo.
+Valor elegido a ojo, no sale del paper. Con el clip de 20 grados puesto deja de tener efecto practico.
+Igualmente hay que poner red de seguridad en angulo de la plataforma.
+Revisar rad/s en tilt coordination para no quedar desfasado y false cue. Lo dejo asi.
+En LQR el problema no desaparece (el limite perceptual sigue), 
+pero deja de ser una perilla fija: el costo decide cuanto false cue vale la pena en cada momento.
+
+---9/10/2026---
+Rate limit del tilt movido de adentro del lp_orden2 (sobre f punto) a afuera, sobre el angulo ya calculado.
+Razon: con la Ec. 5.34 g era fijo. Con la 5.30 pasa a ser f / fL_vert.
+0.102 G/s solo equivalia a 5.8 grados/s con fL_vert = 1. Con 0.5 permitia 11.7.
+tilt_roll y tilt_pitch pasan a ser estados. Agregado clip de tilt_max = 20 grados.
+El clip va sobre el estado, no sobre una copia: tilt_roll representa el angulo real, que si esta restringido.
+(Al reves que fL_vert, donde el piso de 0.2 es red de seguridad numerica y va en copia.)
+Si se clipeara solo la salida habria windup: el estado se iria a 45 grados y despues habria que desandar 25 fantasma.
+
+Limitacion conocida, no resuelta. Se ataca con LQR:
+A 5.8 grados/s, llegar a 20 grados tarda 3.4 s. Una frenada dura 2-3 s.
+=> El tilt nunca completa, y al acelerar despues todavia esta yendo hacia adelante. False cue real en chicanas.
+Que llegue tarde es por diseño (el golpe inicial lo da el traslacional). El problema es que se QUEDA cuando el evento ya paso.
+Descartado por ahora: subir el rate a 10-15 grados/s, bajar tilt_max a ~8, o rate asimetrico (volver mas rapido que alejarse).
+El clasico tiene una perilla para el trade-off entre responder rapido y no generar false cues. No puede razonar sobre el contexto.
+=> Argumento concreto para el informe. Ojo: en LQR el problema no desaparece, deja de ser perilla fija y pasa a decidirlo el costo.
+
+Error de referencia visual, no de signo:
+Parecia todo al reves (acelerar inclinaba adelante, izquierda inclinaba a izquierda). Estaba mirando desde el lado opuesto.
+Dos sintomas invertidos a la vez es la pista: una rotacion de camara invierte adelante/atras E izquierda/derecha juntos.
+Estuve a punto de dar vuelta dos signos que estaban bien.
+Solucion: dibujar_nariz sobre el eje x + camara fija (guardar ax.elev/ax.azim antes del clear, restaurar despues).
+Verificado: acelerar = trompa arriba, doblar a izquierda = se inclina a la derecha. Signos del tilt cerrados.
+Agregue nariz a la plataforma de matlpotlib para identificar la orientacion.
+
+
+
+
+
+---PARA EL INFORME---
+(cosas que no son cambios de codigo sino argumentos a desarrollar)
+
+Por que dos bloques de HP y no uno:
+Filtrar todo en F_S da cross-coupling cero (Ec. C.18) pero la posicion no vuelve a cero:
+el tilt inclina la plataforma y la gravedad se "derrama" al canal traslacional, metiendo continua DESPUES del filtro.
+Filtrar en F_I lo arregla pero introduce cross-coupling (Ec. C.12: la unica forma de no tenerlo es no filtrar).
+Los dos defectos son de 2do orden, pero el de F_S se integra dos veces y se acumula; el de F_I queda acotado.
+=> Mixto: el grueso en F_S (gratis) + lo minimo en F_I para llegar a orden 3.
+
+Limite de validez del Apendice C:
+Asume angulos CHICOS (beta_S << 1). Con un auto y tilt agresivo esa hipotesis se tensa.
+Estoy aplicando a un auto un analisis derivado para aviones de performance modesta. Declararlo explicitamente.
+
+Errata en la Ec. 5.22 del paper (ver 26/8):
+Falta un tan(theta_S) en el tercer termino. Encontrada anotada a lapiz en el escaneo, no por mi.
+
+Limitacion del rate limit del tilt (ver 9/10):
+Argumento concreto para el paso a LQR. Mejor que la critica abstracta.
+
+Condicion de orden del filtro (n >= k+1):
+Demostracion en Parte C del documento de Claude, secciones C.2 (escalon paso a paso) y C.3 (las dos condiciones).
+El paper lo saca en 3 lineas con el teorema del valor final (Ec. 2.24-2.26).
+En C.2/C.3 esta derivado sin ese teorema, solo con integrales. 
+Para el informe conviene la version larga: muestra que lo entendi.
+Para que la posicion vuelva al centro hacen falta DOS condiciones: area cero (velocidad vuelve) y momento cero (posicion vuelve).
+Cada orden de HP compra una condicion. Como el traslacional integra dos veces, hacen falta tres.
+
+Verificaciones empiricas propias (nada de esto esta en el paper, es metodo mio):
+- Indices de localAngularVelocity: AC no los documenta. Asumi mal al principio.
+Determinados con pista de suspension (pitch), correlacion con steerAngle (yaw) y descarte (roll). Ver 26/8.
+- fis.accG es aceleracion cinematica, no fuerza especifica. 
+Tres tests, incluido el de pendiente que descarta la hipotesis de que AC reste 1G fijo del eje vertical del auto. Ver 7/10.
+- AC es diestro y la escala es G: en vuelo libre accG[1] = -1. Un solo test confirma las dos cosas.
+
+Nota metodologica sobre LLMs (ver Sesiones previas):
+Cita alucinada de Gemini: paper 'SPRK' con autores, año y revista inventados.
+Detectada al contrastar contra fuente primaria. Verificar TODA cita generada por IA.
+
+Nomenclatura Gough-Stewart (ver Sesiones previas):
+Mecanismo inventado por Gough en 1947 (maquina de test de neumaticos, operativa 1954).
+Stewart (1965) propuso uno distinto: 3 patas, 2 actuadores c/u. Gough revelo su trabajo previo
+en la correspondencia adjunta al mismo paper. Material para la introduccion.
+
+Tiempo nominal vs tiempo real (ver 24/8):
+Usando dt = 1/fps la plataforma casi no se movia, porque actualizar() tarda mas que el frame nominal
+por el render de matplotlib. Conecta con el pendiente de separar el lazo de fisica del de render.
+
+Un error de referencia visual se disfraza de error de signo (ver 9/10):
+Dos sintomas invertidos a la vez es la pista. Estuve a punto de dar vuelta dos signos correctos.

@@ -51,6 +51,15 @@ def dibujar_patas(anclajes_b: np.ndarray, plataforma_final: np.ndarray, ax):
         pata_z = [anclajes_b[k,2], plataforma_final[k,2]]
         ax.plot(pata_x, pata_y, pata_z, color='red')
 
+def dibujar_nariz(plataforma_final: np.ndarray, roll, pitch, yaw, ax, largo=200.0):
+    """Flecha azul que marca el 'adelante' de la plataforma.
+    Sin esto el hexagono es casi simetrico y no se sabe de que lado se lo mira."""
+    centro = plataforma_final.mean(axis=0)
+    punta = centro + rotar_plataforma(np.array([[largo, 0.0, 0.0]]), roll, pitch, yaw)[0]
+    ax.plot([centro[0], punta[0]],
+            [centro[1], punta[1]],
+            [centro[2], punta[2]], color='blue', linewidth=3)
+
 def integrar(valor_viejo, tasa, dt):
     valor_nuevo = valor_viejo + dt * tasa
     return valor_nuevo

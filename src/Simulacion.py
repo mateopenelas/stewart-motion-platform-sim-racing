@@ -9,6 +9,7 @@ if __name__ == '__main__':
 
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
+    ax.view_init(elev=30, azim=160)
 
     radio_b = 350
     radio_p = 250
@@ -34,6 +35,7 @@ if __name__ == '__main__':
     
     fL_lat = fL_lat_d = 0.0
     fL_long = fL_long_d = 0.0
+    fL_vert = fL_vert_d = 0.0
 
     lav_roll = 0
     lav_pitch = 0
@@ -55,17 +57,24 @@ if __name__ == '__main__':
     a_int1 = np.zeros(3)
     a_int2 = np.zeros(3)
 
+    tilt_rate_max = np.radians(5.8)
+    tilt_max = np.radians(20)
+
+    tilt_roll  = 0.0
+    tilt_pitch = 0.0
+
 
     # archivo = open('log.txt', 'w')
     # archivo.write('accG[0],accG[1],accG[2]\n')
 
     def actualizar(frame):
         global ultimo_packet_id, dt, t1, roll, pitch
-        global fL_lat, fL_lat_d, fL_long, fL_long_d
+        global fL_lat, fL_lat_d, fL_long, fL_long_d, fL_vert, fL_vert_d
         global lav_roll, lav_pitch, lav_yaw
         global lav_roll_v, lav_roll_p, lav_pitch_v, lav_pitch_p, lav_yaw_v, lav_yaw_p
         global lav_roll_v2, lav_pitch_v2, lav_yaw_v2
         global a_v, a_p, a_v2, a_int1, a_int2
+        global tilt_roll, tilt_pitch
         fis = t.leer_fisicas(mm)
         if ultimo_packet_id != fis.packetId:
             t_now = time.perf_counter()
@@ -82,8 +91,9 @@ if __name__ == '__main__':
 
             # ------------------ROTATIONAL CHANNEL------------------
 
-            fL_lat, fL_lat_d = lp_orden2(f_AA[0], fL_lat, fL_lat_d, 3.1, 1.4, dt, 0.102)
-            fL_long, fL_long_d = lp_orden2(f_AA[2], fL_long, fL_long_d, 3.1, 1.4, dt, 0.102)
+            fL_lat, fL_lat_d = lp_orden2(f_AA[0], fL_lat, fL_lat_d, 3.1, 1.4, dt)
+            fL_long, fL_long_d = lp_orden2(f_AA[2], fL_long, fL_long_d, 3.1, 1.4, dt)
+            fL_vert, fL_vert_d = lp_orden2(f_AA[1], fL_vert, fL_vert_d, 3.1, 1.4, dt)
 
             lav_roll_h1, lav_roll_v, lav_roll_p = hp_orden2(np.clip(fis.localAngularVelocity[2], -lav_max, lav_max), lav_roll_v, lav_roll_p, 1.02, 1.0, dt)
             lav_pitch_h1, lav_pitch_v, lav_pitch_p = hp_orden2(np.clip(fis.localAngularVelocity[0], -lav_max, lav_max), lav_pitch_v, lav_pitch_p, 1.02, 1.0, dt)
@@ -99,8 +109,20 @@ if __name__ == '__main__':
             lav_pitch = integrar(lav_pitch, lav_pitch_h2, dt)
             lav_yaw = integrar(lav_yaw, lav_yaw_h2, dt)
 
-            roll = -fL_lat/g + lav_roll
-            pitch = fL_long/g + lav_pitch
+            denom_arctan = max(fL_vert, 0.2)
+
+            tilt_roll_obj  =  np.arctan2(fL_lat,  denom_arctan)
+            tilt_pitch_obj = -np.arctan2(fL_long * np.cos(tilt_roll_obj), denom_arctan)
+
+            paso = tilt_rate_max * dt
+            tilt_roll  = tilt_roll  + np.clip(tilt_roll_obj  - tilt_roll,  -paso, paso)
+            tilt_pitch = tilt_pitch + np.clip(tilt_pitch_obj - tilt_pitch, -paso, paso)
+
+            tilt_roll  = np.clip(tilt_roll,  -tilt_max, tilt_max)
+            tilt_pitch = np.clip(tilt_pitch, -tilt_max, tilt_max)
+
+            roll = tilt_roll + lav_roll
+            pitch = tilt_pitch + lav_pitch
             yaw = lav_yaw
 
             plataforma_rotada = rotar_plataforma(anclajes_p, roll, pitch, yaw)
@@ -128,8 +150,7 @@ if __name__ == '__main__':
             dibujar_base(anclajes_b, ax)
             dibujar_plataforma(plataforma_final, ax)
             dibujar_patas(anclajes_b, plataforma_final, ax)
-
-
+            dibujar_nariz(plataforma_final, roll, pitch, yaw, ax)
 
     try:
         anim = FuncAnimation(fig, actualizar, frames=None, interval=1000/fps)
