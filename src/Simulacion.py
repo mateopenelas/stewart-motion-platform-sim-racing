@@ -9,7 +9,7 @@ if __name__ == '__main__':
 
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
-    ax.view_init(elev=30, azim=160)
+    ax.view_init(elev=20, azim=160)
 
     radio_b = 350
     radio_p = 250
@@ -27,25 +27,17 @@ if __name__ == '__main__':
     mm = t.abrir_fisicas()
     ultimo_packet_id = -1
 
-    g_max = 5
-    lav_max = 2.5
-
     dt = 0
     t1 = time.perf_counter()
-    
-    fL_lat = fL_lat_d = 0.0
-    fL_long = fL_long_d = 0.0
-    fL_vert = fL_vert_d = 0.0
 
-    lav_roll = 0
-    lav_pitch = 0
-    lav_yaw = 0
+    fL   = np.zeros(3)
+    fL_d = np.zeros(3)
+    tilt = np.zeros(3)
 
-    lav_roll_v  = lav_roll_p  = 0.0
-    lav_pitch_v = lav_pitch_p = 0.0
-    lav_yaw_v   = lav_yaw_p   = 0.0
-
-    lav_roll_v2 = lav_pitch_v2 = lav_yaw_v2 = 0.0
+    lav    = np.zeros(3)
+    lav_v  = np.zeros(3)
+    lav_p  = np.zeros(3)
+    lav_v2 = np.zeros(3)
 
     a_v  = np.zeros(3)
     a_p  = np.zeros(3)
@@ -60,21 +52,22 @@ if __name__ == '__main__':
     tilt_rate_max = np.radians(5.8)
     tilt_max = np.radians(20)
 
-    tilt_roll  = 0.0
-    tilt_pitch = 0.0
-
+    K_tras = np.array([1.0, 1.0, 1.0])
+    L_tras = np.array([5.0, 5.0, 5.0])
+    K_rot = np.array([1.0, 1.0, 1.0])
+    L_rot = np.array([2.5, 2.5, 2.5])
+    K_lat = 1.0
+    K_long = 1.0
+    L_lat = 5.0
+    L_long = 5.0
 
     # archivo = open('log.txt', 'w')
     # archivo.write('accG[0],accG[1],accG[2]\n')
 
     def actualizar(frame):
         global ultimo_packet_id, dt, t1, roll, pitch
-        global fL_lat, fL_lat_d, fL_long, fL_long_d, fL_vert, fL_vert_d
-        global lav_roll, lav_pitch, lav_yaw
-        global lav_roll_v, lav_roll_p, lav_pitch_v, lav_pitch_p, lav_yaw_v, lav_yaw_p
-        global lav_roll_v2, lav_pitch_v2, lav_yaw_v2
+        global fL, fL_d, tilt, lav, lav_v, lav_p, lav_v2
         global a_v, a_p, a_v2, a_int1, a_int2
-        global tilt_roll, tilt_pitch
         fis = t.leer_fisicas(mm)
         if ultimo_packet_id != fis.packetId:
             t_now = time.perf_counter()
@@ -86,50 +79,44 @@ if __name__ == '__main__':
             ax.set_ylim(-400, 400)
             ax.set_zlim(0, 800)
 
-            accG_clip = np.clip(fis.accG, -g_max, g_max)
-            f_AA = accG_clip + gravedad(fis.roll, fis.pitch) # Fuerza especifica
+            w_auto = gravedad(fis.roll, fis.pitch)
 
             # ------------------ROTATIONAL CHANNEL------------------
 
-            fL_lat, fL_lat_d = lp_orden2(f_AA[0], fL_lat, fL_lat_d, 3.1, 1.4, dt)
-            fL_long, fL_long_d = lp_orden2(f_AA[2], fL_long, fL_long_d, 3.1, 1.4, dt)
-            fL_vert, fL_vert_d = lp_orden2(f_AA[1], fL_vert, fL_vert_d, 3.1, 1.4, dt)
+            f2 = lp_scale(fis.accG + w_auto, K_lat, K_long, L_lat, L_long)
 
-            lav_roll_h1, lav_roll_v, lav_roll_p = hp_orden2(np.clip(fis.localAngularVelocity[2], -lav_max, lav_max), lav_roll_v, lav_roll_p, 1.02, 1.0, dt)
-            lav_pitch_h1, lav_pitch_v, lav_pitch_p = hp_orden2(np.clip(fis.localAngularVelocity[0], -lav_max, lav_max), lav_pitch_v, lav_pitch_p, 1.02, 1.0, dt)
-            lav_yaw_h1, lav_yaw_v, lav_yaw_p = hp_orden2(np.clip(fis.localAngularVelocity[1], -lav_max, lav_max), lav_yaw_v, lav_yaw_p, 1.02, 1.0, dt)
+            fL, fL_d = lp_orden2(f2, fL, fL_d, 3.1, 1.4, dt)
 
-            roll_ts, pitch_ts, yaw_ts = ts(lav_roll_h1, lav_pitch_h1, lav_yaw_h1, roll, pitch)
-
-            lav_roll_h2, lav_roll_v2 = hp_orden1(roll_ts, lav_roll_v2, 0.2, dt)
-            lav_pitch_h2, lav_pitch_v2 = hp_orden1(pitch_ts, lav_pitch_v2, 0.2, dt)
-            lav_yaw_h2, lav_yaw_v2 = hp_orden1(yaw_ts, lav_yaw_v2, 0.2, dt)
-
-            lav_roll = integrar(lav_roll, lav_roll_h2, dt)
-            lav_pitch = integrar(lav_pitch, lav_pitch_h2, dt)
-            lav_yaw = integrar(lav_yaw, lav_yaw_h2, dt)
-
+            fL_lat, fL_vert, fL_long = fL
             denom_arctan = max(fL_vert, 0.2)
 
             tilt_roll_obj  =  np.arctan2(fL_lat,  denom_arctan)
             tilt_pitch_obj = -np.arctan2(fL_long * np.cos(tilt_roll_obj), denom_arctan)
+            tilt_obj = np.array([tilt_roll_obj, tilt_pitch_obj, 0.0])
 
             paso = tilt_rate_max * dt
-            tilt_roll  = tilt_roll  + np.clip(tilt_roll_obj  - tilt_roll,  -paso, paso)
-            tilt_pitch = tilt_pitch + np.clip(tilt_pitch_obj - tilt_pitch, -paso, paso)
+            tilt = tilt + np.clip(tilt_obj - tilt, -paso, paso)
+            tilt = np.clip(tilt, -tilt_max, tilt_max)
 
-            tilt_roll  = np.clip(tilt_roll,  -tilt_max, tilt_max)
-            tilt_pitch = np.clip(tilt_pitch, -tilt_max, tilt_max)
+            w1 = hp_scale(ac_a_plataforma(fis.localAngularVelocity), K_rot, L_rot)
 
-            roll = tilt_roll + lav_roll
-            pitch = tilt_pitch + lav_pitch
-            yaw = lav_yaw
+            wH, lav_v, lav_p = hp_orden2(w1, lav_v, lav_p, 1.02, 1.0, dt)
+
+            beta_d = ts(roll, pitch) @ wH   
+
+            beta_dH, lav_v2 = hp_orden1(beta_d, lav_v2, 0.2, dt)
+
+            lav = integrar(lav, beta_dH, dt)
+
+            roll, pitch, yaw = tilt + lav
 
             plataforma_rotada = rotar_plataforma(anclajes_p, roll, pitch, yaw)
 
             # ------------------TRASLATIONAL CHANNEL------------------
 
-            f1 = ac_a_plataforma(f_AA)
+            f_AA_tras = hp_scale(fis.accG, K_tras, L_tras) + w_auto
+            f1 = ac_a_plataforma(f_AA_tras)
+
             w_sim = ac_a_plataforma(gravedad(roll, pitch))
             a1 = f1 - w_sim
 

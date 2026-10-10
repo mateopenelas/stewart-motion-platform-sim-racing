@@ -89,11 +89,24 @@ def hp_orden2(y, v, p, wn, zeta, dt):
     p = integrar(p, v, dt)
     return x, v, p
 
-def ts(pH, qH, rH, roll, pitch):
-    phi_H = pH + qH*np.sin(roll)*np.tan(pitch) + rH*np.cos(roll)*np.tan(pitch)
-    theta_H = qH*np.cos(roll) - rH*np.sin(roll)
-    psi_H = qH*np.sin(roll)*(1/np.cos(pitch)) + rH*np.cos(roll)*(1/np.cos(pitch))
-    return phi_H, theta_H, psi_H
+def ts(roll, pitch):
+    """Matriz T_S de la Ec. 2.12. Convierte velocidad angular del cuerpo
+    en derivada de angulos de Euler: beta_punto = T_S @ omega (Ec. 2.11 / 5.16).
+
+    Entra omega = [p, q, r] en ejes plataforma (roll, pitch, yaw rate).
+    Sale [phi_punto, theta_punto, psi_punto].
+
+    Singular en theta = +-90 grados (gimbal lock). No es problema practico
+    para una plataforma, pero es la razon por la que se usan cuaterniones."""
+    sin_roll  = np.sin(roll)
+    cos_roll  = np.cos(roll)
+    tan_pitch = np.tan(pitch)
+    sec_pitch = 1.0 / np.cos(pitch)
+    return np.array([
+        [1.0, sin_roll*tan_pitch,  cos_roll*tan_pitch],
+        [0.0, cos_roll,           -sin_roll          ],
+        [0.0, sin_roll*sec_pitch,  cos_roll*sec_pitch],
+    ])
 
 def gravedad(roll: float, pitch: float) -> np.ndarray:
     longitudinal = -np.sin(pitch)
@@ -106,3 +119,19 @@ def ac_a_plataforma(v):
     Signos VERIFICADOS: AC es diestro (x=izquierda, y=arriba, z=adelante),
     asi que es un reordenamiento puro, sin cambios de signo."""
     return np.array([v[2], v[0], v[1]])
+
+def escalar_y_limitar(x, K, L):
+    """Fig. B.1: recta de pendiente K que satura en +-L."""
+    return np.clip(K * x, -L, L)
+
+def hp_scale(x, K, L):
+    """HP SCALE, Fig. 5.1 y 5.2 (Ec. B.1 y B.2). Los tres ejes."""
+    return escalar_y_limitar(x, K, L)
+
+def lp_scale(f_AA, K_lat, K_long, L_lat, L_long):
+    """LP SCALE, Fig. 5.2 (Ec. B.4-B.5). El VERTICAL pasa intacto:
+    K_3 = 1 fijo, sin limite. Es estructural, no tuning — lo que define
+    el tilt es el cociente x/z e y/z."""
+    K = np.array([K_lat, 1.0,    K_long])
+    L = np.array([L_lat, np.inf, L_long])
+    return escalar_y_limitar(f_AA, K, L)

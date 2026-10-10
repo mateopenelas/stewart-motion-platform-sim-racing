@@ -124,6 +124,11 @@ Solucion: dibujar_nariz sobre el eje x + camara fija (guardar ax.elev/ax.azim an
 Verificado: acelerar = trompa arriba, doblar a izquierda = se inclina a la derecha. Signos del tilt cerrados.
 Agregue nariz a la plataforma de matlpotlib para identificar la orientacion.
 
+Agregue funcion escalado, HP y LP.
+
+Unifique canal rotacional en vectores. Antes estaba por elementos (indices).
+Hubo que cambiar funcion ts. ahora ts es la matriz de la ecuacion 2.12, y se multiplica en el codigo por [p,q,r]
+
 
 
 
@@ -178,3 +183,9 @@ por el render de matplotlib. Conecta con el pendiente de separar el lazo de fisi
 
 Un error de referencia visual se disfraza de error de signo (ver 9/10):
 Dos sintomas invertidos a la vez es la pista. Estuve a punto de dar vuelta dos signos correctos.
+
+Asimetria longitudinal (no contemplada por R&N):
+La Fig. B.1 escala y limita simetricamente (un solo L para ambos lados).
+En un auto el longitudinal es asimetrico: frenada 1.5-2 G, aceleracion 0.5-1 G.
+=> El limite se define por la frenada y en aceleracion sobra recorrido.
+Otra hipotesis del paper (avion de performance modesta) que no encaja con un auto.
