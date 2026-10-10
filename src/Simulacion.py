@@ -30,6 +30,8 @@ if __name__ == '__main__':
     dt = 0
     t1 = time.perf_counter()
 
+    primer_frame = True
+
     fL   = np.zeros(3)
     fL_d = np.zeros(3)
     tilt = np.zeros(3)
@@ -73,6 +75,8 @@ if __name__ == '__main__':
             t_now = time.perf_counter()
             dt = min(t_now - t1, 0.1)
             t1 = t_now
+            if primer_frame:
+                dt = 0.0
             ultimo_packet_id = fis.packetId
             ax.clear()
             ax.set_xlim(-400, 400)
@@ -84,6 +88,9 @@ if __name__ == '__main__':
             # ------------------ROTATIONAL CHANNEL------------------
 
             f2 = lp_scale(fis.accG + w_auto, K_lat, K_long, L_lat, L_long)
+
+            if primer_frame:
+                fL = f2.copy()
 
             fL, fL_d = lp_orden2(f2, fL, fL_d, 3.1, 1.4, dt)
 
@@ -119,6 +126,10 @@ if __name__ == '__main__':
 
             w_sim = ac_a_plataforma(gravedad(roll, pitch))
             a1 = f1 - w_sim
+
+            if primer_frame:
+                a_p = a1 / 3.1**2
+                primer_frame = False
 
             aH, a_v, a_p = hp_orden2(a1, a_v, a_p, 3.1, 1.4, dt)
 
