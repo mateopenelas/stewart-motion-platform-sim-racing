@@ -133,6 +133,25 @@ Implemente arranque en caliente con variable primer frame.
 
 ---12/10/2026---
 Threading agregado. El objetivo es separar fisica/washout de matplotlib, asi se usa un dt mas chico, lo cual genera mejor precision.
+fps bajado de 30 a 15. El render 3D de matplotlib le robaba turnos al hilo de fisica por el GIL.
+Medido sobre log: se perdia el 48% de los paquetes de AC (leidos 6874 de 13285 emitidos).
+Mediana de dt 3.4 ms, pero 28% de las iteraciones salteaba al menos un paquete.
+
+Diagnostico del canal traslacional. NO habia bug.
+Replay offline desde el log reproduce la salida bit a bit (error 3e-4 %, solo redondeo del CSV).
+Entrada limpia: con el auto quieto accG_long promedia -0.00036 G.
+Todo vuelve a cero: en el tramo quieto de 15.5 s, pos_x va -1248 -> 378 mm y vel_x -> 13 mm/s.
+El problema era de ESCALA: con K=1 una frenada de 3.1 G pide 1918 mm de recorrido longitudinal
+y 1742 mm de vertical, con constante de tiempo de 5 s para volver. Se veia erratico pero era correcto.
+
+Tuneo minimo: K_tras 1.0 -> 0.15 y w de HP#2 traslacional 0.2 -> 0.5.
+Queda en 286 mm pico / 124 mm rms longitudinal, 145 mm vertical. El w del rotacional sigue en 0.2.
+L_tras queda en 5: con K=0.15 la frenada de 3.1 G da 0.47 G, el limite nunca se activa.
+
+Clip final sobre roll/pitch, pendiente desde el 24/8. Con el tuneo el pitch llegaba a 20.3 grados:
+tilt_max limita solo el tilt, y lav se suma encima.
+
+No sacar el clip de dt=0.1. Probado con el intervalo real: la excursion salta a 11.5 m.
 
 
 
