@@ -4,6 +4,7 @@ if __name__ == '__main__':
     import Funciones_Telemetria as t
     import time
     from Funciones_Simulacion import *
+    import threading
 
     g = 9.81
 
@@ -63,25 +64,28 @@ if __name__ == '__main__':
     L_lat = 5.0
     L_long = 5.0
 
+    pose = np.zeros(6) # [x, y, z, roll, pitch, yaw]
+    pose_lock = threading.Lock()
+    corriendo = True
+
     # archivo = open('log.txt', 'w')
     # archivo.write('accG[0],accG[1],accG[2]\n')
 
-    def actualizar(frame):
-        global ultimo_packet_id, dt, t1, roll, pitch
+    def ciclo_fisica():
+        global ultimo_packet_id, dt, t1, roll, pitch, primer_frame
         global fL, fL_d, tilt, lav, lav_v, lav_p, lav_v2
         global a_v, a_p, a_v2, a_int1, a_int2
-        fis = t.leer_fisicas(mm)
-        if ultimo_packet_id != fis.packetId:
+        while corriendo:
+            fis = t.leer_fisicas(mm)
+            if ultimo_packet_id == fis.packetId:
+                time.sleep(0.001)
+                continue
             t_now = time.perf_counter()
             dt = min(t_now - t1, 0.1)
             t1 = t_now
             if primer_frame:
                 dt = 0.0
             ultimo_packet_id = fis.packetId
-            ax.clear()
-            ax.set_xlim(-400, 400)
-            ax.set_ylim(-400, 400)
-            ax.set_zlim(0, 800)
 
             w_auto = gravedad(fis.roll, fis.pitch)
 
@@ -109,15 +113,13 @@ if __name__ == '__main__':
 
             wH, lav_v, lav_p = hp_orden2(w1, lav_v, lav_p, 1.02, 1.0, dt)
 
-            beta_d = ts(roll, pitch) @ wH   
+            beta_d = ts(roll, pitch) @ wH
 
             beta_dH, lav_v2 = hp_orden1(beta_d, lav_v2, 0.2, dt)
 
             lav = integrar(lav, beta_dH, dt)
 
             roll, pitch, yaw = tilt + lav
-
-            plataforma_rotada = rotar_plataforma(anclajes_p, roll, pitch, yaw)
 
             # ------------------TRASLATIONAL CHANNEL------------------
 
@@ -142,17 +144,40 @@ if __name__ == '__main__':
             a_int1 = integrar(a_int1, a_SI_mm, dt)
             a_int2 = integrar(a_int2, a_int1, dt)
 
-            plataforma_final = trasladar_plataforma(plataforma_rotada, traslacion + a_int2)
             # print(f'{fis.heading},{fis.pitch}\n')
             # archivo.write(f'{fis.accG[0]},{fis.accG[1]},{fis.accG[2]}\n')
-            dibujar_base(anclajes_b, ax)
-            dibujar_plataforma(plataforma_final, ax)
-            dibujar_patas(anclajes_b, plataforma_final, ax)
-            dibujar_nariz(plataforma_final, roll, pitch, yaw, ax)
+
+            with pose_lock:
+                pose[:3] = a_int2
+                pose[3:] = (roll, pitch, yaw)
+
+
+    def actualizar(frame):
+        with pose_lock:
+            p = pose.copy()
+
+        ax.clear()
+        ax.set_xlim(-400, 400)
+        ax.set_ylim(-400, 400)
+        ax.set_zlim(0, 800)
+
+        plataforma_rotada = rotar_plataforma(anclajes_p, p[3], p[4], p[5])
+        plataforma_final = trasladar_plataforma(plataforma_rotada, traslacion + p[:3])
+
+        dibujar_base(anclajes_b, ax)
+        dibujar_plataforma(plataforma_final, ax)
+        dibujar_patas(anclajes_b, plataforma_final, ax)
+        dibujar_nariz(plataforma_final, p[3], p[4], p[5], ax)
+
+
+    hilo_fisica = threading.Thread(target=ciclo_fisica, daemon=True)
+    hilo_fisica.start()
 
     try:
         anim = FuncAnimation(fig, actualizar, frames=None, interval=1000/fps)
         plt.show()
     finally:
+        corriendo = False
+        hilo_fisica.join(timeout=1.0)   # espera a que salga del ciclo
         mm.close()
         # archivo.close()
