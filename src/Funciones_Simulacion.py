@@ -71,12 +71,10 @@ def hp_orden1(y, v, w, dt):
     v = integrar(v, hp, dt)
     return hp, v
 
-def lp_orden2(y, x, xd, wn, zeta, dt, rate_limit=None):
+def lp_orden2(y, x, xd, wn, zeta, dt):
     """Pasabajos de 2do orden: wn^2/(s^2 + 2*zeta*wn*s + wn^2)."""
     xdd = wn**2 * (y - x) - 2.0*zeta*wn*xd
     xd = integrar(xd, xdd, dt)
-    if rate_limit is not None:
-        xd = np.clip(xd, -rate_limit, rate_limit)   # R&N Sec. 5.5.2
     x = integrar(x, xd, dt)
     return x, xd
 

@@ -120,7 +120,7 @@ Error de referencia visual, no de signo:
 Parecia todo al reves (acelerar inclinaba adelante, izquierda inclinaba a izquierda). Estaba mirando desde el lado opuesto.
 Dos sintomas invertidos a la vez es la pista: una rotacion de camara invierte adelante/atras E izquierda/derecha juntos.
 Estuve a punto de dar vuelta dos signos que estaban bien.
-Solucion: dibujar_nariz sobre el eje x + camara fija (guardar ax.elev/ax.azim antes del clear, restaurar despues).
+Solucion: dibujar_nariz sobre el eje x + camara fija.
 Verificado: acelerar = trompa arriba, doblar a izquierda = se inclina a la derecha. Signos del tilt cerrados.
 Agregue nariz a la plataforma de matlpotlib para identificar la orientacion.
 
