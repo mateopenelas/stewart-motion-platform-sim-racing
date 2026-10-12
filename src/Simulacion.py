@@ -23,7 +23,7 @@ if __name__ == '__main__':
 
     traslacion = np.array([0,0,500])
 
-    fps = 30
+    fps = 15
 
     mm = t.abrir_fisicas()
     ultimo_packet_id = -1
@@ -55,7 +55,7 @@ if __name__ == '__main__':
     tilt_rate_max = np.radians(5.8)
     tilt_max = np.radians(20)
 
-    K_tras = np.array([1.0, 1.0, 1.0])
+    K_tras = np.array([0.15, 0.15, 0.15])
     L_tras = np.array([5.0, 5.0, 5.0])
     K_rot = np.array([1.0, 1.0, 1.0])
     L_rot = np.array([2.5, 2.5, 2.5])
@@ -120,6 +120,8 @@ if __name__ == '__main__':
             lav = integrar(lav, beta_dH, dt)
 
             roll, pitch, yaw = tilt + lav
+            roll  = np.clip(roll,  -tilt_max, tilt_max)
+            pitch = np.clip(pitch, -tilt_max, tilt_max)
 
             # ------------------TRASLATIONAL CHANNEL------------------
 
@@ -137,7 +139,7 @@ if __name__ == '__main__':
 
             a2 = rotar_plataforma(aH, roll, pitch, yaw)
 
-            a_SI, a_v2 = hp_orden1(a2, a_v2, 0.2, dt)
+            a_SI, a_v2 = hp_orden1(a2, a_v2, 0.5, dt)
 
             a_SI_mm = a_SI * g * 1000  # de G a mm/s^2
 
