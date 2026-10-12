@@ -131,6 +131,9 @@ Hubo que cambiar funcion ts. ahora ts es la matriz de la ecuacion 2.12, y se mul
 
 Implemente arranque en caliente con variable primer frame.
 
+---12/10/2026---
+Threading agregado. El objetivo es separar fisica/washout de matplotlib, asi se usa un dt mas chico, lo cual genera mejor precision.
+
 
 
 
