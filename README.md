@@ -2,6 +2,12 @@
 
 Motion cueing software for a DIY 6-DOF Gough–Stewart motion platform, driven by live telemetry from Assetto Corsa. The core is a Python implementation of the classical washout algorithm from Reid & Nahon (1985).
 
+<p align="center">
+  <img width="640" alt="3D visualization driven by live Assetto Corsa telemetry" src="https://github.com/user-attachments/assets/7de51285-3909-4711-9c2f-78b05ab0cc76" />
+  <br>
+  <sub>Left: Assetto Corsa (Lotus Exos 125 at Spa, La Source to Raidillon). Right: platform pose computed in real time by the washout algorithm.</sub>
+</p>
+
 > **Status:** the software runs on live Assetto Corsa telemetry and drives a 3D visualization of the platform. No hardware has been assembled yet: the parts for the first linear actuator have been purchased. Inverse kinematics (platform pose → leg lengths) is not implemented yet.
 
 ## How it works
