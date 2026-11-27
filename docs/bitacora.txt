@@ -213,3 +213,35 @@ La Fig. B.1 escala y limita simetricamente (un solo L para ambos lados).
 En un auto el longitudinal es asimetrico: frenada 1.5-2 G, aceleracion 0.5-1 G.
 => El limite se define por la frenada y en aceleracion sobra recorrido.
 Otra hipotesis del paper (avion de performance modesta) que no encaja con un auto.
+
+---27/11/2026---
+Medida la perdida de paquetes, pendiente desde el 12/10.
+Instrumentacion temporal (revertida despues): emitidos vs leidos, vueltas del while,
+tiempo real en sleep, frames dibujados y distribucion de saltos de packetId.
+
+Resultado: con render matplotlib se pierde 48.6% de los paquetes. Sin render, 0.0%.
+Demostrado por eliminacion, no por deduccion.
+
+Tasa real de telemetria de AC: 333 Hz exactos (15000 paquetes en 45.0 s).
+Los 305 Hz que venía citando estaban deprimidos por el mismo problema que estaba midiendo.
+
+La perdida es a rafagas, no uniforme: 74% de los saltos son +1, pero la cola llega a +26,
+que a 333 Hz son 78 ms sin mirar la memoria. Coincide con los 89 ms que tarda cada frame.
+
+El render tambien frena a AC: publica 309 Hz con matplotlib y 333 Hz sin el, 7% menos.
+Y tambien infla el sleep: time.sleep(0.001) cuesta 3.72 ms con render y 1.35 ms sin el.
+
+Bajar fps de 30 a 15 (hecho el 12/10) no sirvio de nada: 50.7% vs 49.1%.
+El render ya estaba saturado en ~11 fps, asi que el parametro interval nunca limito nada.
+El diagnostico de octubre era correcto; el remedio no.
+
+Hipotesis descartadas en el camino:
+- Lazo lento. No: poll a 423 Hz contra 333 Hz de publicacion.
+- packetId incrementando de a 2. No: 74% de los saltos son +1.
+
+Si alguna vez importa el render, la palanca es dibujar mas barato (reusar artistas en
+vez de ax.clear()), no bajar los fps. Para medir en serio, correr sin ventana.
+
+OJO para el informe: los logs del 12/10 se tomaron con 48% de perdida y huecos de
+hasta 84 ms. Los numeros de excursion (286 mm, 0.35 g) son la respuesta a las muestras
+que llegaron, no a la senial real. Si hacen falta numeros limpios, regrabar headless.

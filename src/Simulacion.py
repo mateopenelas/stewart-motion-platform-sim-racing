@@ -25,6 +25,9 @@ if __name__ == '__main__':
 
     fps = 15
 
+    solo_fisica = False
+    duracion_medicion = 45
+
     mm = t.abrir_fisicas()
     ultimo_packet_id = -1
 
@@ -176,8 +179,11 @@ if __name__ == '__main__':
     hilo_fisica.start()
 
     try:
-        anim = FuncAnimation(fig, actualizar, frames=None, interval=1000/fps)
-        plt.show()
+        if solo_fisica:
+            time.sleep(duracion_medicion)
+        else:
+            anim = FuncAnimation(fig, actualizar, frames=None, interval=1000/fps)
+            plt.show()
     finally:
         corriendo = False
         hilo_fisica.join(timeout=1.0)   # espera a que salga del ciclo
